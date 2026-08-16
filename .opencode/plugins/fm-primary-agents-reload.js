@@ -44,6 +44,12 @@ function resolvePath(anchor) {
 
 function isPrimaryRoot(root) {
   if (!root) return false;
+  const gitDir = `${root}/.git`;
+  try {
+    if (!statSync(gitDir).isDirectory()) return false;
+  } catch {
+    return false;
+  }
   return existsSync(`${root}/${AGENTS_FILE}`) && existsSync(`${root}/bin`);
 }
 
@@ -72,10 +78,8 @@ class AgentsReloadCache {
   }
 }
 
-function hasAgentsContent(system, content) {
-  if (!content) return true;
-  const needle = content.slice(0, 240);
-  return system.some((entry) => typeof entry === "string" && entry.includes(needle));
+function hasReloadMarker(system) {
+  return system.some((entry) => typeof entry === "string" && entry.includes(RELOAD_MARKER));
 }
 
 function reloadBlock(content) {
@@ -114,7 +118,7 @@ export const FmPrimaryAgentsReload = async ({ directory, worktree }) => {
       const system = output?.system;
       if (!Array.isArray(system)) return;
 
-      if (hasAgentsContent(system, content)) return;
+      if (hasReloadMarker(system)) return;
 
       const block = reloadBlock(content);
       if (system.length === 0) {
