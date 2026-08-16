@@ -207,38 +207,16 @@ A local skill exists only in this home, so offloading an entry out of `data/capt
    A stale unique fact is never deleted, only archived.
    Do not invent another graduation path.
 
-## Open-record persistence for what this session holds
+## Open-record persistence
 
-The sweep above files knowledge; this pass files record *state*.
-It runs on every `/stow` and takes the same volatile input and nothing else: the open work threads that are in context right now, minutes before the reset this pass precedes destroys them.
-That is the whole point of doing it here - the facts that make a record wrong are usually held only in the session that learned them.
+The sweep above preserves knowledge; this one preserves the state of work.
+A reset destroys whatever exists only in this session, and that includes what you have learned about work already under way, not just facts worth remembering.
+So before the reset, make sure the important open work you are holding in context is durably recorded: file what was never filed, and correct what you now know is stale.
 
-The boundary is part of the contract, because the wider reading is the natural one and it is wrong:
-
-- **In scope**: an important open thread this session knows about that has no durable record at all, and a durable record this session knows is now wrong.
-- **Out of scope**: enumerating the backlog, listing holds, querying a forge for PR state, or comparing any record this session never touched against reality.
-  A record the session merely re-read at startup and learned nothing new about is not a candidate; a record this session holds contradicting evidence for is.
-- Nothing in this pass may be reported as a guarantee that the durable records are correct.
-  It reads no record it cannot name, and its input dies with the context, so it cannot be that guarantee.
-  A reconciliation that outlives the session is a different mechanism and does not exist in this pass.
-
-Perform it in this order:
-
-1. List the open threads this session actually holds: work dispatched, shipped, merged, re-scoped, or abandoned; a captain decision that was answered; a blocker that cleared; a tracker whose title no longer describes what happened.
-   Work that shipped without ever being filed belongs on this list exactly as much as a record that went stale.
-2. For each thread, name the specific record and inspect that record before writing.
-   Use `tasks-axi show <id> --full` for a backlog item; for a decision hold, derive its identity slug with `bin/fm-decision-hold.sh id <origin-id> <decision-key>` and then read the hold's body and state with `tasks-axi show <hold-id> --full`, because inspecting a hold means reading the record before it is closed, not printing its slug.
-   A named record is the entire read scope of this pass.
-3. Write each correction through the owning path rather than around it.
-   - No record at all: create the item with `tasks-axi add`.
-     The sweep above already files an undone next step; this covers the threads it would not name, above all work that was dispatched or has already landed, so a shipped result stops being invisible to every reporting surface.
-   - Wrong state: move it with the backend's own state command, because the session-start digest reads a task's identity fields and not its body, so a correction written only into the body never reaches the surface that reports the wrong status.
-   - A title that no longer describes reality: rewrite the title itself, not only the note under it.
-   - An answered decision whose hold is still open: close it through `bin/fm-decision-hold.sh` with the captain's decision record under `decision-hold-lifecycle`, which stays the owner of when a hold may close.
-     Work shipping is never by itself grounds to close a hold.
-4. Keep AGENTS.md's backlog contract as written: verify each volatile detail against its authoritative source before recording it, and use inspect-then-update on a considered note body instead of appending.
-5. When a record is wrong but what it should say is a judgment this session cannot make, leave the record as it is and raise the question, registering it under `decision-hold-lifecycle` when it is a captain decision.
-   A guessed correction is worse than a known-stale record, because it reads as authoritative.
+Judge for yourself what is important and which record each thing belongs to, and write it through the owner that already governs that record.
+One bound holds: this covers the open work you are actually holding in context, not the records at large.
+It is not a reconciliation of durable records against repository or forge reality, cannot become one on input this volatile, and must never be reported as one.
+Where the right correction is a judgment you cannot make, leave the record alone and raise the question instead of guessing.
 
 ## One-time migration of unmarked entries
 
