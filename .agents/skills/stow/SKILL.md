@@ -227,7 +227,8 @@ Perform it in this order:
 1. List the open threads this session actually holds: work dispatched, shipped, merged, re-scoped, or abandoned; a captain decision that was answered; a blocker that cleared; a tracker whose title no longer describes what happened.
    Work that shipped without ever being filed belongs on this list exactly as much as a record that went stale.
 2. For each thread, name the specific record and inspect that record before writing.
-   Use `tasks-axi show <id> --full` for a backlog item and `bin/fm-decision-hold.sh id <origin-id> <decision-key>` for a decision hold; a named record is the entire read scope of this pass.
+   Use `tasks-axi show <id> --full` for a backlog item; for a decision hold, derive its identity slug with `bin/fm-decision-hold.sh id <origin-id> <decision-key>` and then read the hold's body and state with `tasks-axi show <hold-id> --full`, because inspecting a hold means reading the record before it is closed, not printing its slug.
+   A named record is the entire read scope of this pass.
 3. Write each correction through the owning path rather than around it.
    - No record at all: create the item with `tasks-axi add`.
      The sweep above already files an undone next step; this covers the threads it would not name, above all work that was dispatched or has already landed, so a shipped result stops being invisible to every reporting surface.
