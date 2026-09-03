@@ -399,13 +399,14 @@ test_matrix_kimi_status_footer_below_box() {
   # spawn delivery gate false-fails. The tolerance is precisely scoped: the
   # divergence pins below prove any OTHER free-text row below the box still
   # invalidates it, with and without the override knob.
-  local box typed hint meter wide transcript out
+  local box typed hint meter wide transcript meter_prose out
   box=$'╭────────────────────────╮\n│ >                      │\n╰────────────────────────╯'
   typed=$'╭────────────────────────╮\n│ > deploy the fix       │\n╰────────────────────────╯'
   hint=$'K2.7 Coding thinking  /repo    shift-tab to Plan mode to review the approach'
   meter=$'                                                                            context: 0% (0/256k)'
   wide=$'K2.7 Coding thinking  /repo'
   transcript=$'the user asked about the parser yesterday'
+  meter_prose=$'the meter says context: 50% (128/256k) now'
   assert_screen "kimi idle, hint footer below the box" empty "$CAPS_STYLED" "$box"$'\n'"$hint"
   assert_screen "kimi idle, hint footer, plain capture" empty "$CAPS_PLAIN" "$box"$'\n'"$hint"
   assert_screen "kimi idle, two-row footer with context meter" empty "$CAPS_STYLED" "$box"$'\n'"$wide"$'\n'"$meter"
@@ -414,6 +415,9 @@ test_matrix_kimi_status_footer_below_box() {
   # Divergence: an ordinary transcript row directly below the box is NOT
   # furniture; the candidate must still be refused as stale.
   assert_screen "kimi box above transcript text stays stale" unknown "$CAPS_STYLED" "$box"$'\n'"$transcript"
+  # Divergence: a transcript row merely EMBEDDING meter-shaped prose mid-row
+  # is not the right-aligned furniture row either; it must still refuse.
+  assert_screen "kimi box above mid-row meter prose stays stale" unknown "$CAPS_STYLED" "$box"$'\n'"$meter_prose"
   # Divergence: with the footer pattern overridden away, the real footer no
   # longer qualifies either - the pass above came from the furniture match,
   # not from a weakened staleness check.

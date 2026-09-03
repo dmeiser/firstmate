@@ -387,7 +387,7 @@ FM_COMPOSER_LEFTBAR_FOOTER_RE_DEFAULT='^(Build|Plan)[[:space:]]+·[[:space:]]+'
 # them exactly as it steps over blank rows, or the visibly-empty kimi composer
 # is refused as stale screen content and the delivery gate false-fails. Only
 # these rendered furniture shapes qualify, never arbitrary text below a box.
-FM_COMPOSER_KIMI_FOOTER_RE_DEFAULT='^((Never Ask|Ask When Needed|Always Ask)[[:space:]]+)?K[0-9]+[.][0-9]+[[:space:]]+[A-Za-z]|context:[[:space:]]*[0-9]+([.][0-9]+)?%[[:space:]]*[(]'
+FM_COMPOSER_KIMI_FOOTER_RE_DEFAULT='^((Never Ask|Ask When Needed|Always Ask)[[:space:]]+)?K[0-9]+[.][0-9]+[[:space:]]+[A-Za-z]|^[[:space:]]*context:[[:space:]]*[0-9]+([.][0-9]+)?%[[:space:]]*[(]'
 
 # The bounded row window adapters should capture for a composer read. One
 # shared policy (previously three per-backend variables that had drifted to
