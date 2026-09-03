@@ -3508,14 +3508,18 @@ test_send_text_submit_detects_swallowed_enter() {
   local dir log resp fb out
   dir="$TMP_ROOT/submit-swallow"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
   # Every post-Enter agent-get read still reports idle, and the composer still
-  # holds the typed text: a genuine swallow, not a queued Enter.
+  # holds the typed text: a genuine swallow, not a queued Enter. Call 6 is the
+  # loop-top native re-read that guards a patient retry budget from pressing
+  # Enter into an agent that is already working; idle there keeps the retry
+  # going, so the swallow still earns its second Enter.
   printf '{"result":{"agent":{"agent_status":"idle"}}}\n' > "$resp/2.out"
   printf '{"result":{"agent":{"agent_status":"idle"}}}\n' > "$resp/4.out"
   printf '  \xe2\x9d\xaf hello captain\n' > "$resp/5.out"
-  printf '{"result":{"agent":{"agent_status":"idle"}}}\n' > "$resp/7.out"
-  printf '  \xe2\x9d\xaf hello captain\n' > "$resp/8.out"
-  printf '{"result":{"agent":{"agent_status":"idle"}}}\n' > "$resp/9.out"
-  printf '  ready\n' > "$resp/10.out"
+  printf '{"result":{"agent":{"agent_status":"idle"}}}\n' > "$resp/6.out"
+  printf '{"result":{"agent":{"agent_status":"idle"}}}\n' > "$resp/8.out"
+  printf '  \xe2\x9d\xaf hello captain\n' > "$resp/9.out"
+  printf '{"result":{"agent":{"agent_status":"idle"}}}\n' > "$resp/10.out"
+  printf '  ready\n' > "$resp/11.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_BACKEND_HERDR_SUBMIT_POLLS=1 \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_send_text_submit default:w1:p2 "hello captain" 2 0.01 0.01' "$ROOT" )
@@ -3541,9 +3545,12 @@ test_send_text_submit_popup_autocomplete_requires_second_enter() {
   # 5: composer still holds the placeholder fill; native idle falls through
   #    to the shared composer verdict, which retries rather than confirming.
   printf '  \xe2\x9d\xaf /compact\n' > "$resp/5.out"
-  # 6: send-keys enter (#2) - actually submits
-  # 7: agent get -> working (submitted)
-  printf '{"result":{"agent":{"agent_status":"working"}}}\n' > "$resp/7.out"
+  # 6: loop-top native re-read (patient-budget guard) -> still idle, so the
+  #    retry proceeds instead of mistaking the pane for already working.
+  printf '{"result":{"agent":{"agent_status":"idle"}}}\n' > "$resp/6.out"
+  # 7: send-keys enter (#2) - actually submits
+  # 8: agent get -> working (submitted)
+  printf '{"result":{"agent":{"agent_status":"working"}}}\n' > "$resp/8.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_BACKEND_HERDR_SUBMIT_POLLS=1 \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_send_text_submit default:w1:p2 "/compact" 3 0.01 1.2' "$ROOT" )
@@ -3750,11 +3757,15 @@ test_send_text_submit_never_idle_native_state_keeps_pending_without_a_transition
   dir="$TMP_ROOT/submit-cursor-no-transition"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
   # The pane was ALREADY mid-turn before our Enter, so its busy footer is not
   # evidence about OUR message: the verdict must stay pending rather than
-  # borrowing someone else's turn as proof of our delivery.
+  # borrowing someone else's turn as proof of our delivery. Call 6 is the
+  # loop-top native re-read guarding the retry budget; blocked there (never
+  # working for cursor) keeps the retry honest, and call 9's missing response
+  # leaves the queued-Enter busy primitive idle, so the verdict stays pending.
   printf '{"result":{"agent":{"agent_status":"blocked"}}}\n' > "$resp/2.out"
   herdr_cursor_midturn_plain > "$resp/3.out"
   herdr_cursor_midturn_ansi > "$resp/5.out"
-  herdr_cursor_midturn_ansi > "$resp/7.out"
+  printf '{"result":{"agent":{"agent_status":"blocked"}}}\n' > "$resp/6.out"
+  herdr_cursor_midturn_ansi > "$resp/8.out"
   fb=$(make_herdr_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_send_text_submit default:w1:p2 "hello captain" 2 0.01 0.01' "$ROOT" )
@@ -3872,6 +3883,184 @@ test_send_text_submit_unknown_on_composer_capture_failure() {
   enter_count=$(grep -c $'\x1f''pane'$'\x1f''send-keys'$'\x1f''w1:p2'$'\x1f''enter' "$log")
   [ "$enter_count" -eq 1 ] || fail "send_text_submit must not retry Enter after composer verification becomes unreadable, sent $enter_count Enter(s)"
   pass "fm_backend_herdr_send_text_submit: an unreadable composer stops Enter retries after native status stays idle"
+}
+
+# 2026-09-03 kimi spawn-gate defect 1: a pre-first-message kimi pane has NO
+# herdr-registered agent, so every wait_for_working poll reports unknown even
+# though the pane is healthy. The idle-baseline branch used to print that
+# unknown immediately, stranding the brief pointer in the composer (a swallowed
+# Enter was never retried) and failing every kimi spawn's delivery gate. The
+# unknown verdict must now fall through to the composer read: a visibly-empty
+# composer confirms delivery, and only a genuinely unreadable screen reports
+# unknown.
+test_send_text_submit_idle_baseline_unknown_falls_through_to_composer() {
+  local dir log resp fb out enter_count screen
+  dir="$TMP_ROOT/submit-idle-unknown-fallthrough"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
+  screen=$'╭────────────────────────╮\n│ >                      │\n╰────────────────────────╯\nK2.7 Coding thinking  /repo    shift-tab to Plan mode'
+  # 1: send-text  2: baseline idle  3: send-keys enter  4: agent get ->
+  # agent_not_found (a healthy kimi pane with no registered agent)  5: pane
+  # read -> the visibly-empty kimi composer (box + status footer).
+  printf '{"result":{"agent":{"agent_status":"idle"}}}\n' > "$resp/2.out"
+  printf '{"error":{"code":"agent_not_found","message":"none"}}\n' > "$resp/4.out"
+  printf '%s\n' "$screen" > "$resp/5.out"
+  fb=$(make_herdr_fakebin "$dir")
+  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_BACKEND_HERDR_SUBMIT_POLLS=1 \
+    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_send_text_submit default:w1:p2 "x" 2 0.01 0.01' "$ROOT" )
+  [ "$out" = empty ] || fail "an idle-baseline unknown poll must fall through to the composer read and confirm an empty composer, got '$out'"
+  enter_count=$(grep -c $'\x1f''pane'$'\x1f''send-keys'$'\x1f''w1:p2'$'\x1f''enter' "$log")
+  [ "$enter_count" -eq 1 ] || fail "a composer-proven delivery must not send a needless extra Enter, sent $enter_count Enter(s)"
+  pass "fm_backend_herdr_send_text_submit: an idle-baseline unknown poll (no registered agent) falls through to the composer read instead of aborting as unconfirmed"
+}
+
+# Companion to the fall-through above: when the composer still holds the text
+# after the first Enter (the physically-swallowed-Enter race), the retry loop
+# must re-press Enter through the same unknown-poll path and confirm once the
+# second Enter clears the composer.
+test_send_text_submit_idle_baseline_unknown_retries_swallowed_enter() {
+  local dir log resp fb out enter_count empty_screen pending_screen
+  dir="$TMP_ROOT/submit-idle-unknown-retry"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
+  empty_screen=$'╭────────────────────────╮\n│ >                      │\n╰────────────────────────╯\nK2.7 Coding thinking  /repo    shift-tab to Plan mode'
+  pending_screen=$'╭────────────────────────╮\n│ > the brief pointer      │\n╰────────────────────────╯\nK2.7 Coding thinking  /repo    shift-tab to Plan mode'
+  # 1: send-text  2: baseline idle  3: enter  4: agent_not_found  5: pane read
+  # -> text still present (swallowed Enter); 6: loop-top native re-read ->
+  # agent_not_found (not working, so the retry proceeds)  7: second enter  8:
+  # agent_not_found  9: pane read -> composer now empty (retry landed).
+  printf '{"result":{"agent":{"agent_status":"idle"}}}\n' > "$resp/2.out"
+  printf '{"error":{"code":"agent_not_found","message":"none"}}\n' > "$resp/4.out"
+  printf '%s\n' "$pending_screen" > "$resp/5.out"
+  printf '{"error":{"code":"agent_not_found","message":"none"}}\n' > "$resp/6.out"
+  printf '{"error":{"code":"agent_not_found","message":"none"}}\n' > "$resp/8.out"
+  printf '%s\n' "$empty_screen" > "$resp/9.out"
+  fb=$(make_herdr_fakebin "$dir")
+  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_BACKEND_HERDR_SUBMIT_POLLS=1 \
+    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_send_text_submit default:w1:p2 "x" 2 0.01 0.01' "$ROOT" )
+  [ "$out" = empty ] || fail "a swallowed Enter on an unknown-poll pane must be retried and confirmed once the composer clears, got '$out'"
+  enter_count=$(grep -c $'\x1f''pane'$'\x1f''send-keys'$'\x1f''w1:p2'$'\x1f''enter' "$log")
+  [ "$enter_count" -eq 2 ] || fail "the fall-through path must re-press Enter for a proven-pending composer, sent $enter_count Enter(s)"
+  pass "fm_backend_herdr_send_text_submit: a swallowed Enter on a pane whose polls read unknown still earns its retry through the composer proof"
+}
+
+# Companion guard for a patient retry budget (2026-09-03 kimi spawn-gate): the
+# first Enter can land a beat BEFORE the composer read that follows it, so a
+# retry loop that only consults the composer would press a needless second
+# Enter into an agent that is already working on this text. The loop-top
+# native re-read must confirm delivery the moment agent_status flips to
+# working, with no second Enter.
+test_send_text_submit_native_working_mid_loop_confirms_delivery() {
+  local dir log resp fb out enter_count pending_screen
+  dir="$TMP_ROOT/submit-native-working-mid-loop"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
+  pending_screen=$'╭────────────────────────╮\n│ > the brief pointer      │\n╰────────────────────────╯\nK2.7 Coding thinking  /repo    shift-tab to Plan mode'
+  # 1: send-text  2: baseline idle  3: enter  4: poll -> idle  5: pane read ->
+  # text still present (the render raced the landed Enter); 6: loop-top native
+  # re-read -> working: delivery is proven and the loop must stop here.
+  printf '{"result":{"agent":{"agent_status":"idle"}}}\n' > "$resp/2.out"
+  printf '{"result":{"agent":{"agent_status":"idle"}}}\n' > "$resp/4.out"
+  printf '%s\n' "$pending_screen" > "$resp/5.out"
+  printf '{"result":{"agent":{"agent_status":"working"}}}\n' > "$resp/6.out"
+  fb=$(make_herdr_fakebin "$dir")
+  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_BACKEND_HERDR_SUBMIT_POLLS=1 \
+    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_send_text_submit default:w1:p2 "x" 5 0.01 0.01' "$ROOT" )
+  [ "$out" = empty ] || fail "a native working flip mid-loop must confirm delivery without another Enter, got '$out'"
+  enter_count=$(grep -c $'\x1f''pane'$'\x1f''send-keys'$'\x1f''w1:p2'$'\x1f''enter' "$log")
+  [ "$enter_count" -eq 1 ] || fail "the loop-top native guard must stop Enter retries once the turn is working, sent $enter_count Enter(s)"
+  pass "fm_backend_herdr_send_text_submit: a native working flip at the loop top confirms delivery with no further Enter"
+}
+
+# 2026-09-03 kimi spawn-gate defect 3: herdr's agent_status is ambiguous for
+# kimi in BOTH directions - a live kimi at rest reports done on one
+# registration path and idle on another (its foreground still holds the
+# kimi/kimi-code process or wrapper chain), and a self-exited kimi RETAINS its
+# record as done on the first path and as idle on the second (verified live on
+# w4B:p2 and w4T:p3 2026.09.03). The status cannot discriminate rest from
+# exit; the retained record plus a lone recognized shell in the foreground is
+# the structural exit proof. fm_backend_herdr_agent_state must map
+# record-retained + bare-shell foreground to dead on EITHER retained status
+# (so fm-control exit/relaunch and fm-spawn --relaunch can confirm a stop that
+# already happened), and keep reporting alive for every live-branch read that
+# does not positively prove exit - including a transient-empty raw re-read,
+# where pane_agent_state saw a legible status but the deciding second read
+# came back empty and must refuse rather than trust the stale first read. A
+# pane herdr holds NO record for never reaches this proof at all: pane_agent_
+# state maps agent_not_found to no-agent and agent_state maps that to dead
+# upstream (the husk classifier's own contract, pinned in the pane-state
+# tests).
+test_agent_state_retained_record_bare_shell_foreground_is_dead() {
+  local dir log resp fb out
+  run_case() {  # <name> <status-json> <want>
+    local name=$1 sj=$2 want=$3 d l r f o
+    d="$TMP_ROOT/agent-state-dead-$name"; mkdir -p "$d/responses"; l="$d/log"; r="$d/responses"; : > "$l"
+    printf '{"result":{"pane":{"pane_id":"w1:p2"}}}\n' > "$r/1.out"
+    printf '%s\n' "$sj" > "$r/2.out"
+    printf '%s\n' "$sj" > "$r/3.out"
+    printf '{"result":{"type":"pane_process_info","process_info":{"pane_id":"w1:p2","shell_pid":100,"foreground_process_group_id":200,"foreground_processes":[{"pid":200,"name":"bash","argv0":"/bin/bash"}]}}}\n' > "$r/4.out"
+    f=$(make_herdr_fakebin "$d")
+    o=$( PATH="$f:$PATH" FM_HERDR_LOG="$l" FM_HERDR_RESPONSES="$r" \
+      bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_agent_state default:w1:p2' "$ROOT" )
+    [ "$o" = "$want" ] || fail "agent_state case '$name': expected $want, got '$o'"
+  }
+  # Exited kimi, registration path 1: the record retains "done" (verified live
+  # on w4B:p2 2026.09.03: fg bash whose pgid differs from shell_pid).
+  run_case done-retained '{"result":{"agent":{"agent_status":"done"}}}' dead
+  # Exited kimi, registration path 2: the record retains "idle" (verified live
+  # on w4T:p3 2026.09.03 after /exit: Bye! rendered, fg exactly one bash).
+  run_case idle-retained '{"result":{"agent":{"agent_status":"idle"}}}' dead
+  pass "fm_backend_herdr_agent_state: a retained record plus a bare-shell foreground proves the agent exited on either retained status"
+}
+
+test_agent_state_live_foregrounds_stay_alive() {
+  local dir log resp fb out
+  # Each case scripts: pane get -> present, agent get -> the status for
+  # pane_agent_state, agent get -> the status for the raw re-read (a separate
+  # body so a transient-empty second read is expressible), then one
+  # process-info body. Every foreground that does not positively prove a bare
+  # shell keeps the agent alive - the recovery-grade default - on ANY retained
+  # status.
+  run_case() {  # <name> <status-json-2> <status-json-3> <process-info-json-or-EMPTY> <want>
+    local name=$1 s2=$2 s3=$3 pi=$4 want=$5 d l r f o
+    d="$TMP_ROOT/agent-state-alive-$name"; mkdir -p "$d/responses"; l="$d/log"; r="$d/responses"; : > "$l"
+    printf '{"result":{"pane":{"pane_id":"w1:p2"}}}\n' > "$r/1.out"
+    printf '%s\n' "$s2" > "$r/2.out"
+    printf '%s\n' "$s3" > "$r/3.out"
+    [ -z "$pi" ] || printf '%s\n' "$pi" > "$r/4.out"
+    f=$(make_herdr_fakebin "$d")
+    o=$( PATH="$f:$PATH" FM_HERDR_LOG="$l" FM_HERDR_RESPONSES="$r" \
+      bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_agent_state default:w1:p2' "$ROOT" )
+    [ "$o" = "$want" ] || fail "agent_state case '$name': expected $want, got '$o'"
+  }
+  DONE='{"result":{"agent":{"agent_status":"done"}}}'
+  IDLE='{"result":{"agent":{"agent_status":"idle"}}}'
+  # Live kimi at rest: the TUI still owns the foreground, on both retained
+  # statuses (done on registration path 1, idle on path 2).
+  run_case kimi-repl-done "$DONE" "$DONE" \
+    '{"result":{"type":"pane_process_info","process_info":{"pane_id":"w1:p2","shell_pid":100,"foreground_process_group_id":200,"foreground_processes":[{"pid":200,"name":"kimi"}]}}}' \
+    alive
+  run_case kimi-repl-idle "$IDLE" "$IDLE" \
+    '{"result":{"type":"pane_process_info","process_info":{"pane_id":"w1:p2","shell_pid":100,"foreground_process_group_id":200,"foreground_processes":[{"pid":200,"name":"kimi"}]}}}' \
+    alive
+  # Live kimi under its wrapper chain: multiple foreground processes.
+  run_case wrapped "$DONE" "$DONE" \
+    '{"result":{"type":"pane_process_info","process_info":{"pane_id":"w1:p2","shell_pid":100,"foreground_process_group_id":200,"foreground_processes":[{"pid":150,"name":"bash"},{"pid":180,"name":"unshare"},{"pid":200,"name":"kimi-code"}]}}}' \
+    alive
+  # A bare-shell foreground whose argv0 names a different program is not proof.
+  run_case argv0-mismatch "$DONE" "$DONE" \
+    '{"result":{"type":"pane_process_info","process_info":{"pane_id":"w1:p2","shell_pid":100,"foreground_process_group_id":200,"foreground_processes":[{"pid":200,"name":"bash","argv0":"/usr/bin/kimi"}]}}}' \
+    alive
+  # An empty process-scope proves nothing either.
+  run_case empty-scope "$DONE" "$DONE" \
+    '{"result":{"type":"pane_process_info","process_info":{"pane_id":"w1:p2","shell_pid":100,"foreground_process_group_id":100,"foreground_processes":[]}}}' \
+    alive
+  # Transient-empty raw re-read inside the live branch: pane_agent_state saw
+  # done, the deciding second read came back empty, and the bare-shell
+  # process-info must not be trusted over it.
+  run_case empty-reread "$DONE" '' \
+    '{"result":{"type":"pane_process_info","process_info":{"pane_id":"w1:p2","shell_pid":100,"foreground_process_group_id":200,"foreground_processes":[{"pid":200,"name":"bash","argv0":"/bin/bash"}]}}}' \
+    alive
+  # A failed process-info read refuses back to alive.
+  run_case unreadable "$DONE" "$DONE" '' alive
+  # A working agent is mid-turn by definition.
+  run_case working '{"result":{"agent":{"agent_status":"working"}}}' \
+    '{"result":{"agent":{"agent_status":"working"}}}' '' alive
+  pass "fm_backend_herdr_agent_state: every live-branch read short of a proven bare shell keeps the agent alive on any retained status"
 }
 
 # --- fm-backend.sh dispatch wiring -------------------------------------------
@@ -4638,6 +4827,11 @@ test_send_text_submit_slow_transition_within_one_enter_needs_no_extra_enter
 test_send_text_submit_send_failed
 test_send_text_submit_unknown_on_capture_failure
 test_send_text_submit_unknown_on_composer_capture_failure
+test_send_text_submit_idle_baseline_unknown_falls_through_to_composer
+test_send_text_submit_idle_baseline_unknown_retries_swallowed_enter
+test_send_text_submit_native_working_mid_loop_confirms_delivery
+test_agent_state_retained_record_bare_shell_foreground_is_dead
+test_agent_state_live_foregrounds_stay_alive
 test_dispatch_routes_herdr_backend
 test_dispatch_busy_state_unknown_for_tmux
 test_dispatch_composer_state_routes_by_backend

@@ -3262,7 +3262,14 @@ if [ "$HARNESS" = kimi ]; then
     exit 1
   fi
   KIMI_POINTER="Read the brief at $BRIEF_REAL and follow it exactly."
-  KIMI_SUBMIT_RETRIES=${FM_KIMI_SUBMIT_RETRIES:-3}
+  # Patient by verified measurement (2026-09-03): a fresh kimi pane can swallow
+  # every Enter for many seconds while its input loop initializes, and the
+  # paste is buffered all the while, so the retry loop must outlast that
+  # window. Each retry re-verifies native state and the composer before the
+  # next Enter, and stops the instant either proves delivery; retries matter
+  # only while the text sits unsubmitted, so a generous count cannot duplicate
+  # a delivered message.
+  KIMI_SUBMIT_RETRIES=${FM_KIMI_SUBMIT_RETRIES:-20}
   KIMI_SUBMIT_SLEEP=${FM_KIMI_SUBMIT_SLEEP:-${FM_KIMI_POLL_INTERVAL:-0.5}}
   KIMI_SUBMIT_SETTLE=${FM_KIMI_SUBMIT_SETTLE:-0}
   if ! KIMI_SUBMIT_VERDICT=$(fm_backend_send_text_submit \
