@@ -3966,6 +3966,42 @@ test_send_text_submit_native_working_mid_loop_confirms_delivery() {
   pass "fm_backend_herdr_send_text_submit: a native working flip at the loop top confirms delivery with no further Enter"
 }
 
+# No-borrow companion to the two tests above: the loop-top native-working
+# confirmation proves a TRANSITION attributable to our Enter, so a pane that
+# was ALREADY working at the pre-Enter baseline (a mid-turn steer) must never
+# have that pre-existing state read as proof this Enter was accepted. With the
+# composer geometry ambiguous (pending-unproven), a borrowed read would
+# confirm 'empty' at the first loop-top re-read; the verdict must instead stay
+# pending-unproven through the exhausted retry budget, exactly as
+# fm_composer_queued_enter_verdict's never-convert policy demands - even
+# though the native state reads working the whole time.
+test_send_text_submit_working_baseline_never_confirms_from_borrowed_state() {
+  local dir log resp fb out enter_count box
+  dir="$TMP_ROOT/submit-working-baseline-no-borrow"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
+  # 1: send-text  2: baseline working  3: footer baseline read -> busy
+  # 4: enter  5: composer read -> pending-unproven (differing-width box)
+  # 6: on the unfixed path this is the loop-top native re-read whose borrowed
+  # working baseline would confirm 'empty'; on the fixed path the baseline
+  # gate short-circuits before any read and this call is the retry Enter
+  # (response content ignored)  7: composer read -> pending-unproven
+  # 8: queued-Enter busy primitive -> working; pending-unproven is never
+  # converted, so the verdict stays pending-unproven.
+  box=$'╭──────────╮\n│ > text │\n╰──────────╯'
+  printf '{"result":{"agent":{"agent_status":"working"}}}\n' > "$resp/2.out"
+  herdr_cursor_midturn_plain > "$resp/3.out"
+  printf '%s\n' "$box" > "$resp/5.out"
+  printf '{"result":{"agent":{"agent_status":"working"}}}\n' > "$resp/6.out"
+  printf '%s\n' "$box" > "$resp/7.out"
+  printf '{"result":{"agent":{"agent_status":"working"}}}\n' > "$resp/8.out"
+  fb=$(make_herdr_fakebin "$dir")
+  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_BACKEND_HERDR_SUBMIT_POLLS=1 \
+    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_send_text_submit default:w1:p2 "x" 2 0.01 0.01' "$ROOT" )
+  [ "$out" = pending-unproven ] || fail "a working baseline must not be borrowed as proof this Enter landed, got '$out'"
+  enter_count=$(grep -c $'\x1f''pane'$'\x1f''send-keys'$'\x1f''w1:p2'$'\x1f''enter' "$log")
+  [ "$enter_count" -eq 2 ] || fail "a borrowed working read must not stop the retry loop early, sent $enter_count Enter(s)"
+  pass "fm_backend_herdr_send_text_submit: a pre-existing working baseline is never borrowed as delivery proof"
+}
+
 # 2026-09-03 kimi spawn-gate defect 3: herdr's agent_status is ambiguous for
 # kimi in BOTH directions - a live kimi at rest reports done on one
 # registration path and idle on another (its foreground still holds the
@@ -4830,6 +4866,7 @@ test_send_text_submit_unknown_on_composer_capture_failure
 test_send_text_submit_idle_baseline_unknown_falls_through_to_composer
 test_send_text_submit_idle_baseline_unknown_retries_swallowed_enter
 test_send_text_submit_native_working_mid_loop_confirms_delivery
+test_send_text_submit_working_baseline_never_confirms_from_borrowed_state
 test_agent_state_retained_record_bare_shell_foreground_is_dead
 test_agent_state_live_foregrounds_stay_alive
 test_dispatch_routes_herdr_backend

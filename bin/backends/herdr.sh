@@ -2890,7 +2890,7 @@ fm_backend_herdr_send_text_submit() {  # <target> <text> <retries> <enter-sleep>
     # must stop sending keys. Every harness that registers a working agent
     # mid-loop is covered; cursor's always-blocked native state never reads
     # working, so its queued-Enter path is untouched.
-    if [ "$enter_sent" -eq 1 ] \
+    if [ "$enter_sent" -eq 1 ] && [ "$raw_status" != working ] \
       && [ "$(fm_backend_herdr_agent_status_raw "$FM_BACKEND_HERDR_SESSION" "$FM_BACKEND_HERDR_PANE")" = working ]; then
       printf 'empty'
       return 0
