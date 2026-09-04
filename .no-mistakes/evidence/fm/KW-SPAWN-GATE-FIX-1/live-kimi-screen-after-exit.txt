@@ -1,0 +1,72 @@
+kimi --auto
+dm@warframe:/tmp/kimi-gate-scratch.pXKXHH$ kimi --auto
+
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │                                                                                         │
+ │  ▐█▛█▛█▌  Welcome to Kimi Code!                                                         │
+ │  ▐█████▌  Send /help for help information.                                              │
+ │                                                                                         │
+ │  Directory: /tmp/kimi-gate-scratch.pXKXHH                                               │
+ │  Session:   session_caa0cd15-6990-4df3-b7a6-f96ba857ec0e                                │
+ │  Model:     K2.7 Coding                                                                 │
+ │  Version:   0.41.0                                                                      │
+ │                                                                                         │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+
+ ✦ Try Kimi Code Web UI - clearer task progress, visual sessions & settings management
+   Run /web to continue your session in the browser
+
+   No session yet — one will be created on your first message.
+
+ ✨ Read the brief at /tmp/kimi-gate-scratch.pXKXHH/brief.md and follow it exactly.
+
+ ● Read the brief.
+
+ ● Used Read (brief.md) · 3 lines
+   Error: Cannot /exit while streaming — press Esc or Ctrl-C first.
+
+ ● ACK-BRIEF-READ
+
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │ > /exit                                                                                 │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+ Never Ask  K2.7 Coding thinking  /tmp/kimi-gate-scratch.pXKXHH         /model: switch model
+                                                                    context: 8% (19.2k/256k)
+kimi --auto
+dm@warframe:/tmp/kimi-gate-scratch.pTTc33$ kimi --auto
+
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │                                                                                         │
+ │  ▐█▛█▛█▌  Welcome to Kimi Code!                                                         │
+ │  ▐█████▌  Send /help for help information.                                              │
+ │                                                                                         │
+ │  Directory: /tmp/kimi-gate-scratch.pTTc33                                               │
+ │  Session:   session_c936ae99-0d8d-456b-b004-d01c4b01f4a5                                │
+ │  Model:     K2.7 Coding                                                                 │
+ │  Version:   0.41.0                                                                      │
+ │                                                                                         │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+
+ ✦ Try Kimi Code Web UI - clearer task progress, visual sessions & settings management
+   Run /web to continue your session in the browser
+
+   No session yet — one will be created on your first message.
+
+ ✨ Read the brief at /tmp/kimi-gate-scratch.pTTc33/brief.md and follow it exactly.
+
+ ● Let me read the brief.
+
+ ● Used Read (brief.md) · 3 lines
+
+ ● ACK-BRIEF-READ
+
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │ >                                                                                       │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+ Never Ask  K2.7 Coding thinking  /tmp/kimi-gate-scratch.pTTc33     ! to run a shell command
+                                                                    context: 8% (19.2k/256k)
+
+ Bye!
+
+ To resume this session: kimi -r session_c936ae99-0d8d-456b-b004-d01c4b01f4a5
+dm@warframe:/tmp/kimi-gate-scratch.pTTc33$

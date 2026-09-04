@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kimi herdr spawn-gate fix — live validation evidence</title>
+<style>
+  :root {
+    --bg:#0d1117; --panel:#161b22; --border:#30363d; --fg:#e6edf3; --dim:#8b949e;
+    --green:#3fb950; --red:#f85149; --amber:#d29922; --blue:#58a6ff; --purple:#bc8cff;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.55 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:28px 22px 64px; }
+  h1 { font-size:24px; margin:0 0 6px; }
+  h2 { font-size:18px; margin:34px 0 12px; padding-top:18px; border-top:1px solid var(--border); }
+  .sub { color:var(--dim); margin-bottom:20px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px; min-width:0; }
+  .card h3 { margin:0 0 8px; font-size:15px; }
+  .pill { display:inline-block; padding:2px 10px; border-radius:999px; font-size:12.5px; font-weight:600; }
+  .ok { background:rgba(63,185,80,.15); color:var(--green); border:1px solid rgba(63,185,80,.4); }
+  .fix { background:rgba(210,153,34,.15); color:var(--amber); border:1px solid rgba(210,153,34,.4); }
+  code { background:#1c2129; padding:1px 5px; border-radius:5px; font-size:13px; }
+  .termwrap { border:1px solid var(--border); border-radius:10px; overflow:hidden; margin:12px 0; background:#090c10; }
+  .termhead { display:flex; align-items:center; gap:7px; background:#161b22; padding:7px 12px; border-bottom:1px solid var(--border); }
+  .dot { width:11px; height:11px; border-radius:50%; flex:none; }
+  .dot.r{background:#ff5f57} .dot.y{background:#febc2e} .dot.g{background:#28c840}
+  .termtitle { color:var(--dim); font-size:12.5px; margin-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  pre.term { margin:0; padding:14px 16px; overflow-x:auto; font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:#c9d1d9; }
+  pre.term.small { font-size:12px; }
+  table { border-collapse:collapse; width:100%; font-size:14px; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; font-size:13px; }
+  .callout { border-left:3px solid var(--amber); background:rgba(210,153,34,.08); padding:12px 14px; border-radius:0 8px 8px 0; margin:14px 0; }
+  .callout.blue { border-left-color:var(--blue); background:rgba(88,166,255,.08); }
+  .muted { color:var(--dim); }
+  ul { margin:6px 0; padding-left:22px; }
+  li { margin:4px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Kimi herdr spawn-gate fix — targeted test evidence</h1>
+<div class="sub">Branch <code>fm/KW-SPAWN-GATE-FIX-1</code> · target <code>01b6fc7</code> · validated 2026-09-04 against
+<b>real herdr 0.8.2 + real kimi 0.40.1</b> (TUI self-reports 0.41.0) on an isolated <code>fm-lab-kimigate-*</code> session.</div>
+
+<div class="grid">
+  <div class="card"><h3>Defect 1 — badged footer + swallowed Enter <span class="pill ok">PASS (live)</span></h3>
+    The visibly-empty composer under kimi's <code>Never Ask</code> permission-badged footer classifies
+    <code>empty</code> through the shared classifier, and the real spawn-gate submit
+    (<code>fm_backend_send_text_submit</code>, retries=20/0.5s — the new fm-spawn defaults) confirms
+    <code>empty</code> in &lt;1s while native status flips <code>idle → working</code>.</div>
+  <div class="card"><h3>Defect 2 — unknown native falls through <span class="pill ok">PASS (suite)</span></h3>
+    On an idle baseline whose post-Enter polls read <code>unknown</code> (no herdr-registered agent),
+    the submit path now falls through to the composer read: empty composer confirms delivery (1 Enter),
+    pending composer earns its retry (2 Enters) and confirms once cleared. Genuinely unreadable screens
+    still report <code>unknown</code>.</div>
+  <div class="card"><h3>Defect 3 — exited-kimi stop-confirmation <span class="pill ok">PASS (live)</span></h3>
+    A live kimi (TUI in foreground, <code>working</code>) reports <code>alive</code>. After
+    <code>/exit</code> (<code>Bye!</code> rendered, foreground back to exactly one
+    <code>/bin/bash</code>), the pane reports <code>dead</code> — the primitive
+    <code>fm-control relaunch</code>'s stop-confirmation waits on (<code>wait_agent_state dead</code>).</div>
+</div>
+
+<h2>Live run — the real rendered surface</h2>
+<p class="muted">Captured from the real pane via <code>herdr pane read --source visible</code>. The trust dialog of the
+fresh scratch cwd was accepted with Enter before the run, mirroring a captain's pre-trusted fleet worktree.</p>
+
+<div class="termwrap">
+  <div class="termhead"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="termtitle">herdr pane · capture-1-at-rest.txt · kimi 0.41.0 at rest — permission-badged footer</span></div>
+  <pre class="term">kimi --auto
+dm@warframe:/tmp/kimi-gate-scratch.pTTc33$ kimi --auto
+
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │                                                                                         │
+ │  ▐█▛█▛█▌  Welcome to Kimi Code!                                                         │
+ │  ▐█████▌  Send /help for help information.                                              │
+ │                                                                                         │
+ │  Directory: /tmp/kimi-gate-scratch.pTTc33                                               │
+ │  Session:                                                                               │
+ │  Model:     K2.7 Coding                                                                 │
+ │  Version:   0.41.0                                                                      │
+ │                                                                                         │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+
+ ✦ Try Kimi Code Web UI - clearer task progress, visual sessions &amp; settings management
+   Run /web to continue your session in the browser
+
+   No session yet — one will be created on your first message.
+
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │ &gt;                                                                                       │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+ Never Ask  K2.7 Coding thinking  /tmp/kimi-gate-scratch.pTTc33             @: mention files
+                                                                        context: 0% (0/256k)
+</pre>
+</div>
+
+<div class="callout blue">
+<b>Defect 1 evidence, read directly off the real screen:</b> row below the composer box reads
+<code>Never Ask&nbsp;&nbsp;K2.7 Coding thinking&nbsp;&nbsp;/tmp/kimi-gate-scratch.pTTc33</code> with the right-aligned
+<code>context: 0% (0/256k)</code> meter beneath it. The shared composer verdict on this exact screen:
+<b>empty</b> (before the fix this read <code>unknown</code> and the delivery gate false-failed).
+</div>
+
+<div class="termwrap">
+  <div class="termhead"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="termtitle">herdr pane · capture-2-after-delivery.txt · brief pointer delivered and accepted</span></div>
+  <pre class="term">kimi --auto
+dm@warframe:/tmp/kimi-gate-scratch.pTTc33$ kimi --auto
+
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │                                                                                         │
+ │  ▐█▛█▛█▌  Welcome to Kimi Code!                                                         │
+ │  ▐█████▌  Send /help for help information.                                              │
+ │                                                                                         │
+ │  Directory: /tmp/kimi-gate-scratch.pTTc33                                               │
+ │  Session:   session_c936ae99-0d8d-456b-b004-d01c4b01f4a5                                │
+ │  Model:     K2.7 Coding                                                                 │
+ │  Version:   0.41.0                                                                      │
+ │                                                                                         │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+
+ ✦ Try Kimi Code Web UI - clearer task progress, visual sessions &amp; settings management
+   Run /web to continue your session in the browser
+
+   No session yet — one will be created on your first message.
+
+ ✨ Read the brief at /tmp/kimi-gate-scratch.pTTc33/brief.md and follow it exactly.
+
+  🌒 · Tip: @: mention files
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │ &gt;                                                                                       │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+ Never Ask  K2.7 Coding thinking  /tmp/kimi-gate-scratch.pTTc33     ! to run a shell command
+                                                                        context: 0% (0/256k)
+</pre>
+</div>
+
+<div class="termwrap">
+  <div class="termhead"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="termtitle">herdr pane · capture-3-after-exit.txt · self-exited — Bye! and bare shell prompt</span></div>
+  <pre class="term">kimi --auto
+dm@warframe:/tmp/kimi-gate-scratch.pTTc33$ kimi --auto
+
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │                                                                                         │
+ │  ▐█▛█▛█▌  Welcome to Kimi Code!                                                         │
+ │  ▐█████▌  Send /help for help information.                                              │
+ │                                                                                         │
+ │  Directory: /tmp/kimi-gate-scratch.pTTc33                                               │
+ │  Session:   session_c936ae99-0d8d-456b-b004-d01c4b01f4a5                                │
+ │  Model:     K2.7 Coding                                                                 │
+ │  Version:   0.41.0                                                                      │
+ │                                                                                         │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+
+ ✦ Try Kimi Code Web UI - clearer task progress, visual sessions &amp; settings management
+   Run /web to continue your session in the browser
+
+   No session yet — one will be created on your first message.
+
+ ✨ Read the brief at /tmp/kimi-gate-scratch.pTTc33/brief.md and follow it exactly.
+
+ ● Let me read the brief.
+
+ ● Used Read (brief.md) · 3 lines
+
+ ● ACK-BRIEF-READ
+
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │ &gt;                                                                                       │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+ Never Ask  K2.7 Coding thinking  /tmp/kimi-gate-scratch.pTTc33     ! to run a shell command
+                                                                    context: 8% (19.2k/256k)
+
+ Bye!
+
+ To resume this session: kimi -r session_c936ae99-0d8d-456b-b004-d01c4b01f4a5
+dm@warframe:/tmp/kimi-gate-scratch.pTTc33$
+</pre>
+</div>
+
+<h2>Verdicts recorded live (same run)</h2>
+<pre class="term small">== native agent status raw, pre-first-message (defect 2 premise):
+raw agent_status=&#x27;idle&#x27; (expect empty / no registered agent)
+== shared composer classification of the live at-rest screen (via the real backend dispatch):
+composer verdict at rest: &#x27;empty&#x27; (empty = badged footer tolerated)
+== DEFECT 1+2: real spawn-gate submit (retries=20 sleep=0.5 settle=0, the fm-spawn defaults)
+submit rc=0 elapsed=0s
+submit verdict: &#x27;empty&#x27; (empty = delivery confirmed)
+== native agent status raw, post-submit:
+raw agent_status=&#x27;working&#x27;
+== DEFECT 3a: agent_state while kimi TUI is live (must be alive on any retained status):
+agent_state live: &#x27;alive&#x27; (raw status was &#x27;working&#x27;)
+== waiting for the brief turn to finish before /exit (kimi refuses /exit while streaming)
+turn settled (raw status: idle)
+composer before exit: &#x27;empty&#x27;
+== herdr pane process-info after exit (bare-shell foreground evidence):
+{&quot;id&quot;:&quot;cli:pane:process_info&quot;,&quot;result&quot;:{&quot;process_info&quot;:{&quot;foreground_process_group_id&quot;:831982,&quot;foreground_processes&quot;:[{&quot;argv&quot;:[&quot;/bin/bash&quot;],&quot;cmdline&quot;:&quot;/bin/bash&quot;,&quot;cwd&quot;:&quot;/tmp/kimi-gate-scratch.pTTc33&quot;,&quot;name&quot;:&quot;bash&quot;,&quot;pid&quot;:831982}],&quot;pane_id&quot;:&quot;w1:p1&quot;,&quot;shell_pid&quot;:831982},&quot;type&quot;:&quot;pane_process_info&quot;}}
+[
+  {
+    &quot;argv&quot;: [
+      &quot;/bin/bash&quot;
+    ],
+    &quot;cmdline&quot;: &quot;/bin/bash&quot;,
+    &quot;cwd&quot;: &quot;/tmp/kimi-gate-scratch.pTTc33&quot;,
+    &quot;name&quot;: &quot;bash&quot;,
+    &quot;pid&quot;: 831982
+  }
+]
+== retained agent record after exit:
+{&quot;error&quot;:{&quot;code&quot;:&quot;agent_not_found&quot;,&quot;message&quot;:&quot;agent target w1:p1 not found&quot;},&quot;id&quot;:&quot;cli:agent:get&quot;}
+== DEFECT 3b: agent_state after self-exit (must be dead so relaunch confirms the stop):
+raw retained agent_status after exit: &#x27;&#x27; (done or idle retained - ambiguous by design)
+agent_state after exit: &#x27;dead&#x27;
+ALL LIVE CHECKS PASSED
+</pre>
+
+<h2>Automated suites</h2>
+<table>
+<tr><th>Suite</th><th>Scope</th><th>Result</th></tr>
+<tr><td><code>bin/fm-test-run.sh --changed --exclude-family real-herdr-gated</code></td>
+    <td>baseline selection for this diff (71 suites, given as pre-run baseline)</td><td>PASS</td></tr>
+<tr><td><code>tests/fm-backend-herdr.test.sh</code></td>
+    <td>herdr adapter contract incl. 6 new spawn-gate/agent-state tests + the retained-record bare-shell proof matrix (dead on done/idle retained; alive on TUI foreground, wrapper chains, argv0 mismatch, transient-empty re-read, unreadable process-info)</td><td>PASS (188)</td></tr>
+<tr><td><code>tests/fm-composer-lib.test.sh</code></td>
+    <td>shared composer classifier incl. 2 new kimi footer matrices with divergence pins (transcript prose below the box still refuses; badge-shaped prose without the model token still refuses; overriding the footer regex restores refusal)</td><td>PASS (35)</td></tr>
+<tr><td><code>tests/fm-test-run.test.sh</code></td>
+    <td>test-runner self-suite (LC_ALL=C comm portability fixes)</td><td>PASS</td></tr>
+<tr><td><code>bin/fm-test-run.sh --family real-herdr-gated</code></td>
+    <td>13 real-herdr e2e scripts against the real binary, isolated lab sessions</td><td>PASS (13/13, after the fixture fix below)</td></tr>
+</table>
+
+<div class="callout">
+<b>Fixture fix required by the defect-3 contract (found by this test phase):</b>
+<code>tests/fm-control-herdr-smoke.test.sh</code> registered a synthetic agent on a <b>plain shell</b> pane and expected
+<code>alive</code>. Since the fix, retained-record + bare-shell foreground <i>is</i> the proven-exited shape
+(that is what a self-exited kimi looks like — verified live above), so the classification is now
+<code>dead</code> and the test failed deterministically at the target commit (reproduced solo, twice).
+The fixture was updated to hold a real <code>sleep</code> foreground — the live-agent shape every dispatched TUI
+agent actually has — preserving every assertion: interrupt proves the agent survives, exit still fails closed
+when the agent cannot stop, and no endpoint or worktree is removed. Herdr's duplicate-refusal
+(<code>create_task</code>) is unaffected: it reads the registry directly, not the exit proof.
+</div>
+
+<h2>Boundary constraints from the intent</h2>
+<ul>
+  <li><code>bin/fm-teardown.sh</code>: untouched (empty diff base→target).</li>
+  <li>Only <code>bin/backends/herdr.sh</code> changed among backends; the tmux/zellij/orca/cmux paths are byte-identical, and the tmux-facing suites in the changed selection all pass.</li>
+  <li>The shared classifier's new tolerance is precisely scoped: only kimi 0.40.1's rendered permission-badge and right-aligned context-meter rows below the box qualify; the divergence pins prove arbitrary below-box text, badge-shaped prose without the model token, and an overridden-away regex all still refuse.</li>
+  <li>The gate still refuses on genuine failure: swallowed Enter with a pending composer exhausts retries as <code>pending</code>; unreadable screens report <code>unknown</code>; a working baseline is never borrowed as delivery proof (dedicated no-borrow test).</li>
+  <li>Scratch task fully cleaned: the lab session was torn down through the guarded tripwire path and the scratch directory removed (see the cleanup lines in the log).</li>
+</ul>
+
+<h2>Artifacts</h2>
+<ul>
+  <li><code>live-kimi-gate-validation.log</code> — full live transcript (provisioning → verdicts → guarded teardown)</li>
+  <li><code>capture-1-at-rest.txt</code>, <code>capture-2-after-delivery.txt</code>, <code>capture-3-after-exit.txt</code>, <code>capture-4-verdicts.txt</code> — the final run's pane captures and verdicts</li>
+  <li><code>live-kimi-process-info-after-exit.json</code> — bare-shell foreground proof (exactly one /bin/bash)</li>
+  <li><code>real-herdr-gated-family.log</code> — complete 13-script real family run</li>
+</ul>
+
+</div>
+</body>
+</html>

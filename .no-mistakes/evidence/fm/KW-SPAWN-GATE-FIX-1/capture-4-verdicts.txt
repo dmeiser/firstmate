@@ -1,0 +1,33 @@
+== native agent status raw, pre-first-message (defect 2 premise):
+raw agent_status='idle' (expect empty / no registered agent)
+== shared composer classification of the live at-rest screen (via the real backend dispatch):
+composer verdict at rest: 'empty' (empty = badged footer tolerated)
+== DEFECT 1+2: real spawn-gate submit (retries=20 sleep=0.5 settle=0, the fm-spawn defaults)
+submit rc=0 elapsed=0s
+submit verdict: 'empty' (empty = delivery confirmed)
+== native agent status raw, post-submit:
+raw agent_status='working'
+== DEFECT 3a: agent_state while kimi TUI is live (must be alive on any retained status):
+agent_state live: 'alive' (raw status was 'working')
+== waiting for the brief turn to finish before /exit (kimi refuses /exit while streaming)
+turn settled (raw status: idle)
+composer before exit: 'empty'
+== herdr pane process-info after exit (bare-shell foreground evidence):
+{"id":"cli:pane:process_info","result":{"process_info":{"foreground_process_group_id":831982,"foreground_processes":[{"argv":["/bin/bash"],"cmdline":"/bin/bash","cwd":"/tmp/kimi-gate-scratch.pTTc33","name":"bash","pid":831982}],"pane_id":"w1:p1","shell_pid":831982},"type":"pane_process_info"}}
+[
+  {
+    "argv": [
+      "/bin/bash"
+    ],
+    "cmdline": "/bin/bash",
+    "cwd": "/tmp/kimi-gate-scratch.pTTc33",
+    "name": "bash",
+    "pid": 831982
+  }
+]
+== retained agent record after exit:
+{"error":{"code":"agent_not_found","message":"agent target w1:p1 not found"},"id":"cli:agent:get"}
+== DEFECT 3b: agent_state after self-exit (must be dead so relaunch confirms the stop):
+raw retained agent_status after exit: '' (done or idle retained - ambiguous by design)
+agent_state after exit: 'dead'
+ALL LIVE CHECKS PASSED

@@ -1,0 +1,56 @@
+kimi --auto
+dm@warframe:/tmp/kimi-gate-scratch.pXKXHH$ kimi --auto
+
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │                                                                                         │
+ │  ▐█▛█▛█▌  Welcome to Kimi Code!                                                         │
+ │  ▐█████▌  Send /help for help information.                                              │
+ │                                                                                         │
+ │  Directory: /tmp/kimi-gate-scratch.pXKXHH                                               │
+ │  Session:   session_caa0cd15-6990-4df3-b7a6-f96ba857ec0e                                │
+ │  Model:     K2.7 Coding                                                                 │
+ │  Version:   0.41.0                                                                      │
+ │                                                                                         │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+
+ ✦ Try Kimi Code Web UI - clearer task progress, visual sessions & settings management
+   Run /web to continue your session in the browser
+
+   No session yet — one will be created on your first message.
+
+ ✨ Read the brief at /tmp/kimi-gate-scratch.pXKXHH/brief.md and follow it exactly.
+
+  🌒 · Tip: ask Kimi to schedule tasks, e.g. "remind me at 5pm"
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │ >                                                                                       │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+ Never Ask  K2.7 Coding thinking  /tmp/kimi-gate-scratch.pXKXHH         /model: switch model
+                                                                        context: 0% (0/256k)
+kimi --auto
+dm@warframe:/tmp/kimi-gate-scratch.pTTc33$ kimi --auto
+
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │                                                                                         │
+ │  ▐█▛█▛█▌  Welcome to Kimi Code!                                                         │
+ │  ▐█████▌  Send /help for help information.                                              │
+ │                                                                                         │
+ │  Directory: /tmp/kimi-gate-scratch.pTTc33                                               │
+ │  Session:   session_c936ae99-0d8d-456b-b004-d01c4b01f4a5                                │
+ │  Model:     K2.7 Coding                                                                 │
+ │  Version:   0.41.0                                                                      │
+ │                                                                                         │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+
+ ✦ Try Kimi Code Web UI - clearer task progress, visual sessions & settings management
+   Run /web to continue your session in the browser
+
+   No session yet — one will be created on your first message.
+
+ ✨ Read the brief at /tmp/kimi-gate-scratch.pTTc33/brief.md and follow it exactly.
+
+  🌒 · Tip: @: mention files
+ ╭─────────────────────────────────────────────────────────────────────────────────────────╮
+ │ >                                                                                       │
+ ╰─────────────────────────────────────────────────────────────────────────────────────────╯
+ Never Ask  K2.7 Coding thinking  /tmp/kimi-gate-scratch.pTTc33     ! to run a shell command
+                                                                        context: 0% (0/256k)
