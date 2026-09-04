@@ -3257,6 +3257,16 @@ if [ "${HERDR_PROJECTED:-0}" -eq 1 ]; then
 fi
 spawn_send_key "$T" Enter
 if [ "$HARNESS" = kimi ]; then
+  # Every composer classification below - the readiness wait, the backend
+  # submit core's composer re-verification (it reads in this same process),
+  # and the delivery poll - concerns THIS pane, whose harness this process
+  # launched and positively knows is kimi. Enable the shared classifier's
+  # kimi footer furniture tolerance (the permission-badged model row and
+  # context meter kimi draws directly below the composer box) for exactly
+  # these reads; every other caller and harness keeps the strict
+  # blank-only below-box walk (bin/fm-composer-lib.sh).
+  FM_COMPOSER_KIMI_FOOTER=1
+  export FM_COMPOSER_KIMI_FOOTER
   if ! kimi_wait_for_ready; then
     kimi_spawn_fail "kimi did not show a verified ready signal before brief delivery"
     exit 1

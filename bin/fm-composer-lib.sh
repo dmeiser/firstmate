@@ -385,8 +385,21 @@ FM_COMPOSER_LEFTBAR_FOOTER_RE_DEFAULT='^(Build|Plan)[[:space:]]+·[[:space:]]+'
 # --auto, so the badge is the common case there, not the exception. Both row
 # shapes are composer furniture: the below-box staleness walk must step over
 # them exactly as it steps over blank rows, or the visibly-empty kimi composer
-# is refused as stale screen content and the delivery gate false-fails. Only
-# these rendered furniture shapes qualify, never arbitrary text below a box.
+# is refused as stale screen content and the delivery gate false-fails.
+#
+# The walk consults this pattern ONLY when the caller positively identified
+# the pane as kimi (FM_COMPOSER_KIMI_FOOTER=1). The one production setter is
+# bin/fm-spawn.sh's kimi gate, which launched the pane and knows its harness;
+# every other caller and harness keeps the strict blank-only below-box walk,
+# so no foreign pane can ever have ordinary content discarded as kimi
+# furniture no matter how closely a transcript row resembles this shape. The
+# contract anchors on what the vendor exposes (its permission-mode badge
+# vocabulary and the model identity token, never the release's layout: the
+# badge prefix is optional, the activity word after the model token is
+# unconstrained), and drift fails LOUD, never false-confirms: a future kimi
+# footer this pattern misses reads stale, the spawn gate refuses, and
+# FM_COMPOSER_KIMI_FOOTER_RE below carries the pane until the new shape is
+# verified and the default re-anchored.
 FM_COMPOSER_KIMI_FOOTER_RE_DEFAULT='^((Never Ask|Ask When Needed|Always Ask)[[:space:]]+)?K[0-9]+[.][0-9]+[[:space:]]+[A-Za-z]|^[[:space:]]*context:[[:space:]]*[0-9]+([.][0-9]+)?%[[:space:]]*[(]'
 
 # The bounded row window adapters should capture for a composer read. One
@@ -1108,12 +1121,15 @@ _fm_composer_select_cursorless() {
         boundary=$next
       fi
     fi
-    # Staleness walk below the box/leftbar: blank rows and recognized
-    # composer-furniture footer rows (kimi draws its "context: N% (...)"
-    # status footer directly below the composer box) may follow the boundary;
-    # the first other free-text row means the candidate is stale transcript,
-    # and the first edge row closes it. Reading past the last screen row
-    # yields empty, which passes like a blank row.
+    # Staleness walk below the box/leftbar: blank rows always qualify. A
+    # non-blank row qualifies only as kimi footer furniture, and only when
+    # the caller positively identified the pane as kimi
+    # (FM_COMPOSER_KIMI_FOOTER=1, set by bin/fm-spawn.sh's kimi gate); every
+    # other caller's walk stays blank-only, so a foreign pane's transcript
+    # can never be discarded as furniture. The first other free-text row
+    # means the candidate is stale transcript, and the first edge row closes
+    # it. Reading past the last screen row yields empty, which passes like a
+    # blank row.
     next=$((boundary + 1))
     while :; do
       raw=$(_fm_composer_screen_row "$next" "$plain")
@@ -1121,9 +1137,10 @@ _fm_composer_select_cursorless() {
       fm_composer_normalize_trim_var trimmed
       [ -n "$trimmed" ] || break
       fm_composer_row_has_edge "$trimmed" && break
-      if fm_composer_idle_matches "$trimmed" \
-         "${FM_COMPOSER_KIMI_FOOTER_RE:-$FM_COMPOSER_KIMI_FOOTER_RE_DEFAULT}" \
-         sensitive; then
+      if [ "${FM_COMPOSER_KIMI_FOOTER:-0}" = 1 ] \
+         && fm_composer_idle_matches "$trimmed" \
+            "${FM_COMPOSER_KIMI_FOOTER_RE:-$FM_COMPOSER_KIMI_FOOTER_RE_DEFAULT}" \
+            sensitive; then
         next=$((next + 1))
         continue
       fi

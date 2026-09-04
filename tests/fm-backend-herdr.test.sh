@@ -3059,6 +3059,33 @@ test_composer_state_styled_placeholder_draft_is_pending() {
   pass "fm_backend_herdr_composer_state: bright placeholder-like text stays pending rather than being mistaken for an idle ghost"
 }
 
+# 2026-09-04 review scoping (PR 3716): the kimi below-box footer tolerance is
+# identification-scoped. The real herdr composer read - the exact adapter the
+# kimi spawn gate's readiness, submit-core re-verification, and delivery polls
+# route through - must refuse a visibly-empty kimi composer (box with the
+# verified 0.40.1 permission-badged footer row directly below it) for an
+# UNIDENTIFIED caller, and read it empty only under the caller's positive
+# kimi identification (FM_COMPOSER_KIMI_FOOTER=1, which bin/fm-spawn.sh's
+# kimi gate exports for exactly its own pane's reads). This is the
+# foreign-pane half of the fleet-wide-binding fix: a screen that merely
+# resembles kimi's footer can never have content discarded as furniture
+# without the identification.
+test_composer_state_kimi_footer_requires_positive_identification() {
+  local dir log resp fb out screen
+  dir="$TMP_ROOT/composer-kimi-footer-scope"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
+  screen=$'╭────────────────────────╮\n│ >                      │\n╰────────────────────────╯\nNever Ask  K2.7 Coding thinking  /repo'
+  printf '%s\n' "$screen" > "$resp/1.out"
+  printf '%s\n' "$screen" > "$resp/2.out"
+  fb=$(make_herdr_fakebin "$dir")
+  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
+    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
+  [ "$out" = unknown ] || fail "an unidentified herdr composer read must refuse the kimi badged footer as stale, got '$out'"
+  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_COMPOSER_KIMI_FOOTER=1 \
+    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_composer_state default:w1:p2' "$ROOT" )
+  [ "$out" = empty ] || fail "a kimi-identified herdr composer read must step over the badged footer, got '$out'"
+  pass "fm_backend_herdr_composer_state: the kimi footer tolerance applies only under positive kimi identification"
+}
+
 test_composer_state_real_text_is_pending() {
   local dir log resp fb out
   dir="$TMP_ROOT/composer-pending"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
@@ -3900,11 +3927,15 @@ test_send_text_submit_idle_baseline_unknown_falls_through_to_composer() {
   # 1: send-text  2: baseline idle  3: send-keys enter  4: agent get ->
   # agent_not_found (a healthy kimi pane with no registered agent)  5: pane
   # read -> the visibly-empty kimi composer (box + status footer).
+  # FM_COMPOSER_KIMI_FOOTER=1 mirrors the production caller: only a caller
+  # that positively identified the pane as kimi (bin/fm-spawn.sh's kimi gate)
+  # sets it, which is what licenses stepping over that below-box footer;
+  # the unidentified refusal is pinned in tests/fm-composer-lib.test.sh.
   printf '{"result":{"agent":{"agent_status":"idle"}}}\n' > "$resp/2.out"
   printf '{"error":{"code":"agent_not_found","message":"none"}}\n' > "$resp/4.out"
   printf '%s\n' "$screen" > "$resp/5.out"
   fb=$(make_herdr_fakebin "$dir")
-  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_BACKEND_HERDR_SUBMIT_POLLS=1 \
+  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_BACKEND_HERDR_SUBMIT_POLLS=1 FM_COMPOSER_KIMI_FOOTER=1 \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_send_text_submit default:w1:p2 "x" 2 0.01 0.01' "$ROOT" )
   [ "$out" = empty ] || fail "an idle-baseline unknown poll must fall through to the composer read and confirm an empty composer, got '$out'"
   enter_count=$(grep -c $'\x1f''pane'$'\x1f''send-keys'$'\x1f''w1:p2'$'\x1f''enter' "$log")
@@ -3915,7 +3946,8 @@ test_send_text_submit_idle_baseline_unknown_falls_through_to_composer() {
 # Companion to the fall-through above: when the composer still holds the text
 # after the first Enter (the physically-swallowed-Enter race), the retry loop
 # must re-press Enter through the same unknown-poll path and confirm once the
-# second Enter clears the composer.
+# second Enter clears the composer. FM_COMPOSER_KIMI_FOOTER=1 again mirrors
+# the production kimi-identified caller (see the fall-through test).
 test_send_text_submit_idle_baseline_unknown_retries_swallowed_enter() {
   local dir log resp fb out enter_count empty_screen pending_screen
   dir="$TMP_ROOT/submit-idle-unknown-retry"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
@@ -3932,7 +3964,7 @@ test_send_text_submit_idle_baseline_unknown_retries_swallowed_enter() {
   printf '{"error":{"code":"agent_not_found","message":"none"}}\n' > "$resp/8.out"
   printf '%s\n' "$empty_screen" > "$resp/9.out"
   fb=$(make_herdr_fakebin "$dir")
-  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_BACKEND_HERDR_SUBMIT_POLLS=1 \
+  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_BACKEND_HERDR_SUBMIT_POLLS=1 FM_COMPOSER_KIMI_FOOTER=1 \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_send_text_submit default:w1:p2 "x" 2 0.01 0.01' "$ROOT" )
   [ "$out" = empty ] || fail "a swallowed Enter on an unknown-poll pane must be retried and confirmed once the composer clears, got '$out'"
   enter_count=$(grep -c $'\x1f''pane'$'\x1f''send-keys'$'\x1f''w1:p2'$'\x1f''enter' "$log")
@@ -3945,7 +3977,8 @@ test_send_text_submit_idle_baseline_unknown_retries_swallowed_enter() {
 # retry loop that only consults the composer would press a needless second
 # Enter into an agent that is already working on this text. The loop-top
 # native re-read must confirm delivery the moment agent_status flips to
-# working, with no second Enter.
+# working, with no second Enter. FM_COMPOSER_KIMI_FOOTER=1 again mirrors the
+# production kimi-identified caller (see the fall-through test).
 test_send_text_submit_native_working_mid_loop_confirms_delivery() {
   local dir log resp fb out enter_count pending_screen
   dir="$TMP_ROOT/submit-native-working-mid-loop"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
@@ -3958,7 +3991,7 @@ test_send_text_submit_native_working_mid_loop_confirms_delivery() {
   printf '%s\n' "$pending_screen" > "$resp/5.out"
   printf '{"result":{"agent":{"agent_status":"working"}}}\n' > "$resp/6.out"
   fb=$(make_herdr_fakebin "$dir")
-  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_BACKEND_HERDR_SUBMIT_POLLS=1 \
+  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_BACKEND_HERDR_SUBMIT_POLLS=1 FM_COMPOSER_KIMI_FOOTER=1 \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_send_text_submit default:w1:p2 "x" 5 0.01 0.01' "$ROOT" )
   [ "$out" = empty ] || fail "a native working flip mid-loop must confirm delivery without another Enter, got '$out'"
   enter_count=$(grep -c $'\x1f''pane'$'\x1f''send-keys'$'\x1f''w1:p2'$'\x1f''enter' "$log")
@@ -4817,6 +4850,7 @@ test_busy_state_done_and_blocked_map_to_idle
 test_busy_state_unknown_on_no_agent
 test_composer_state_bare_prompt_is_empty
 test_composer_state_styled_placeholder_draft_is_pending
+test_composer_state_kimi_footer_requires_positive_identification
 test_composer_state_real_text_is_pending
 test_composer_state_popup_placeholder_fill_is_pending
 test_composer_state_unknown_on_capture_failure
