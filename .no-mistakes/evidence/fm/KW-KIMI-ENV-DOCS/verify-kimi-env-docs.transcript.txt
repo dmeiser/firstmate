@@ -1,0 +1,14 @@
+== 1. defaults actually resolve to the documented values ==
+  resolved defaults: ready=60 delivery=40 interval=0.5 retries=3 sleep=0.5 settle=0
+== 2. FM_KIMI_READY_POLLS + FM_KIMI_POLL_INTERVAL govern the readiness loop ==
+  never-ready, polls=3 interval=0.2 => VERDICT=fail in 425ms (expect VERDICT=fail, ~400-700ms)
+  banner on first capture => VERDICT=pass (expect VERDICT=pass)
+== 3. FM_KIMI_DELIVERY_POLLS governs delivery confirmation ==
+  never-deliver => VERDICT=fail (expect VERDICT=fail; spawn would fail per doc)
+  context-usage line present => VERDICT=pass (expect VERDICT=pass)
+== 3b. FM_KIMI_SUBMIT_SETTLE is a pre-Enter settle after typing (never retyping) ==
+  settle=0.3 => verdict=submitted; typed->enter gap=308ms (expect ~300ms, typed before enter)
+  settle=0 => verdict=submitted in 18ms (expect fast; doc: 0 disables)
+== 4. doc lines exist and carry the documented defaults ==
+  all six FM_KIMI_* lines present with documented defaults
+RESULT: PASS
