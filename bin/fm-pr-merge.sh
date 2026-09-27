@@ -27,6 +27,9 @@
 # status carries no app id to compare. Status-creator app binding is not verified
 # here, so an attended --attended-override -- --admin merge can bypass that
 # protection without a missing-check waiver when a same-named status reported.
+# A check run GitHub reports with a null app is a readable producer that
+# belongs to no app, so it can satisfy no app-bound requirement and never
+# makes the producer read fail.
 # An unreadable producer read still refuses.
 # Successfully read requirements remain checked even if another
 # source fails, so known missing checks and all read errors are reported together.
