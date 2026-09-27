@@ -684,6 +684,10 @@ github_read_required_contexts() {
   [ -z "$FM_PR_GITHUB_REQUIRED_ERROR" ]
 }
 
+# The app-bound required contexts no check run at the live head reported, one
+# name per line. Each producer is the name and app id the producer read
+# normalized it to, so a check run GitHub reports with a null app reads as a
+# null app id and can satisfy no app-bound requirement.
 github_required_checks_missing() {
   local json=$1 required=$2 producers=$3
   printf '%s' "$json" | jq -r --argjson required "$required" --argjson producers "$producers" '
@@ -696,7 +700,9 @@ github_required_checks_missing() {
             (if .__typename == "CheckRun" then .name else .context end) == $requirement.context
           elif .__typename == "CheckRun" then
             .name == $requirement.context
-            and any($producers[]; .name == $requirement.context and .app.id == $requirement.app_id)
+            and any($producers[];
+              .name == $requirement.context
+              and ((.app_id // null) == $requirement.app_id))
           else
             .context == $requirement.context
           end) | not)
@@ -808,8 +814,10 @@ EOF
       || [ -z "$runs" ] \
       || ! producers=$(printf '%s' "$runs" | jq -sc --arg head "$live_head" '
         [ .[] | if (.check_runs | type) == "array" then .check_runs[] else error("invalid check runs") end
-          | if (.name | type) == "string" and (.app.id | type) == "number" and .head_sha == $head
-            then . else error("invalid check producer") end ]' 2>/dev/null); then
+          | if (.name | type) == "string" and .head_sha == $head
+              and ((.app // null) == null or ((.app.id) | type) == "number")
+            then {name: .name, app_id: ((.app // {}) | .id)}
+            else error("invalid check producer") end ]' 2>/dev/null); then
       producers='[]'
       refusals="$refusals  - required check producers at head $live_head could not be read
 "
