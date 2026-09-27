@@ -24,7 +24,10 @@
 # Unbound requirements match by name. A bound requirement reported as a check
 # run also needs a matching producer in the check-runs read at the verified
 # head, while one reported as a commit status matches by name, because the
-# status carries no app id to compare. Status-creator app binding is not verified
+# status carries no app id to compare. A check run GitHub reports with a null
+# app is a producer of no app, so it satisfies no bound requirement while
+# still being readable, rather than making the whole rollup unreadable.
+# Status-creator app binding is not verified
 # here, so an attended --attended-override -- --admin merge can bypass that
 # protection without a missing-check waiver when a same-named status reported.
 # An unreadable producer read still refuses.
@@ -685,9 +688,9 @@ github_read_required_contexts() {
 }
 
 # The app-bound required contexts no check run at the live head reported, one
-# name per line. Each producer is the name and app id the producer read
-# normalized it to, so a check run GitHub reports with a null app reads as a
-# null app id and can satisfy no app-bound requirement.
+# name per line. Producers arrive already normalized to {name, app_id} by the
+# read above, with a null app as a null app_id, so the app comparison below
+# never raises on a check run GitHub reports with no app.
 github_required_checks_missing() {
   local json=$1 required=$2 producers=$3
   printf '%s' "$json" | jq -r --argjson required "$required" --argjson producers "$producers" '
