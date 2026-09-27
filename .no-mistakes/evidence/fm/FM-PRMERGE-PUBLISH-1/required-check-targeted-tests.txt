@@ -1,0 +1,23 @@
+# Targeted required-check behavior tests (post-fix tests/fm-pr-merge.test.sh, HEAD a01ca7a)
+$ bash tests/fm-pr-merge.test.sh   # only the required-check cases invoked
+ok - fm-pr-merge reads a check run whose app is null without failing the rollup
+ok - fm-pr-merge enforces required producer identity and named waivers
+ok - fm-pr-merge matches an app-bound required commit status by name
+ok - fm-pr-merge merges when every required check reported and is green
+ok - fm-pr-merge refuses when a required check from branch protection or a ruleset never reported
+ok - fm-pr-merge never lets a check run supersede a legacy status context
+ok - fm-pr-merge reports known missing checks and all independent read errors
+
+# The same selection with PR_MERGE pointed at bin/fm-pr-merge.sh from base 3b68997:
+# the new null-app case reproduces the reported refusal on a green PR.
+not ok - null-app-producer-satisfied: ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /home/dm/.no-mistakes/worktrees/ce3ac3a0e863/01M3GN65D3ARPXG4KDWM7X5213/.pi/extensions/fm-primary-turnend-guard.ts -e /home/dm/.no-mistakes/worktrees/ce3ac3a0e863/01M3GN65D3ARPXG4KDWM7X5213/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+error: refusing to merge https://github.com/example/repo/pull/112
+  - required check producers at head a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4 could not be read
+  - required check 'ci' has not reported at head a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4
+error: these required checks have not reported: ci: expected exit 0, got 1

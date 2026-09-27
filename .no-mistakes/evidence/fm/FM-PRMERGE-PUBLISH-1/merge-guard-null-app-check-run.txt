@@ -1,0 +1,24 @@
+# End-user transcript: bin/fm-pr-merge.sh on a fully green pull request
+# whose head has an app-bound required check 'ci' (app_id 15368) and a
+# check run GitHub reports with a null app, using a recorded gh mock.
+
+=== before-fix / satisfied (script: /home/dm/.no-mistakes/worktrees/ce3ac3a0e863/01M3GN65D3ARPXG4KDWM7X5213/bin/zz-before-fm-pr-merge.sh) ===
+$ fm-pr-merge.sh https://github.com/example/repo/pull/112   (head a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4, app-bound required check 'ci')
+error: refusing to merge https://github.com/example/repo/pull/112
+  - required check producers at head a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4 could not be read
+  - required check 'ci' has not reported at head a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4
+error: these required checks have not reported: ci
+exit code: 1
+forge call: (none - the guard refused before merging)
+=== after-fix / satisfied (script: /home/dm/.no-mistakes/worktrees/ce3ac3a0e863/01M3GN65D3ARPXG4KDWM7X5213/bin/fm-pr-merge.sh) ===
+$ fm-pr-merge.sh https://github.com/example/repo/pull/112   (head a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4, app-bound required check 'ci')
+verified: https://github.com/example/repo/pull/112 is open and mergeable, with every unwaived required check reported and every unwaived check green at head a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4
+exit code: 0
+forge call: pr merge 112 --repo example/repo --match-head-commit a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4 --squash
+=== after-fix / absent (script: /home/dm/.no-mistakes/worktrees/ce3ac3a0e863/01M3GN65D3ARPXG4KDWM7X5213/bin/fm-pr-merge.sh) ===
+$ fm-pr-merge.sh https://github.com/example/repo/pull/112   (head a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4, app-bound required check 'ci')
+error: refusing to merge https://github.com/example/repo/pull/112
+  - required check 'ci' has not reported at head a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4
+error: these required checks have not reported: ci
+exit code: 1
+forge call: (none - the guard refused before merging)
