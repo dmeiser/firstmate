@@ -159,19 +159,19 @@ fm_watcher_lock_matches_pid() {
   local state=$1 watch_path=$2 pid=$3 home=${4:-$FM_HOME} lockdir lock_home lock_path lock_identity current_identity
   FM_WATCHER_MATCHED_IDENTITY=
   lockdir="$state/.watch.lock"
-#   lock_home=$(cat "$lockdir/fm-home" 2>/dev/null || true)
+  lock_home=$(cat "$lockdir/fm-home" 2>/dev/null || true)
   lock_path=$(cat "$lockdir/watcher-path" 2>/dev/null || true)
   lock_identity=$(cat "$lockdir/pid-identity" 2>/dev/null || true)
-#   [ "$lock_home" = "$home" ] || return 1
+  [ "$lock_home" = "$home" ] || return 1
   # The lock records the claiming watcher's own absolute path, which embeds its
   # checkout location, and one firstmate tree lives at several paths on a home
   # with isolated worktrees (the treehouse pool, secondmate homes). An
   # exact-path comparison therefore rejects a live, beating watcher whenever
   # the guard runs from a different checkout than the one that armed it - the
   # false "no live watcher" verdict that re-armed healthy cycles for no
-  # reason. The fm-home check above pins the home and the pid-identity check
-  # below pins the process, so the watcher script's name is the right
-  # granularity for "is this home's watcher".
+  # reason. The fm-home check above pins the home, the pid-identity check
+  # below pins the process, and only the checkout prefix of the recorded
+  # watcher path is widened to the script name for "is this home's watcher".
   [ "$(basename "$lock_path")" = "$(basename "$watch_path")" ] || return 1
   [ -n "$lock_identity" ] || return 1
   current_identity=$(fm_pid_identity "$pid") || return 1
