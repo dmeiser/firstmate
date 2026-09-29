@@ -1585,3 +1585,49 @@ test_arm_waits_for_peer_beacon_after_child_stands_down
 test_arm_fails_loud_when_no_fresh_watcher_confirmable
 test_cycle_exit_ledger_links_successor_and_stays_bounded
 test_stopped_watcher_is_live_but_stale_then_exit_is_classified
+test_fm_watcher_supervision_verdict_ignores_lock_home_mismatch() {
+  # Test that the supervision verdict ignores lock_home mismatch when the watcher is live and beacon is fresh.
+  local state dir home root pid identity
+  dir=$(make_case lock-home-mismatch)
+  state="$dir/state"
+  home="$dir/home"
+  root="$dir/root"
+  mkdir -p "$state" "$home" "$root"
+
+  # Record a live watcher with a different fm-home in the lock.
+  pid=$$
+  identity=$(fm_pid_identity "$pid")
+  mkdir -p "$state/.watch.lock"
+  # Set the lock's fm-home to a different directory.
+  printf '%s\n' "$pid" > "$state/.watch.lock/pid"
+  printf '%s\n' "$dir/other-home" > "$state/.watch.lock/fm-home"
+  printf '%s\n' "$WATCH" > "$state/.watch.lock/watcher-path"
+  printf '%s\n' "$identity" > "$state/.watch.lock/pid-identity"
+  # Set a fresh beacon.
+  touch "$state/.last-watcher-beat"
+
+  # Call the supervision verdict function with the home being the actual home (not the lock's fm-home).
+  FM_STATE_OVERRIDE="$state" bash -c '
+    . "$1"
+    fm_watcher_supervision_verdict "$state" "$WATCH" "$FM_GUARD_GRACE" "$home" "$root"
+  ' _ "$LIB"
+
+  # We expect the verdict to be OK because the watcher is live and beacon is fresh, and we ignore lock_home mismatch.
+  assert_true "$FM_WATCHER_VERDICT_OK" "expected verdict OK when watcher is live and beacon is fresh despite lock_home mismatch"
+  # The reason should be empty or not set? Actually, when OK, the reason is not used, but we can check that it is not set to a down reason.
+  # We'll just check that the reason is not stale-beacon or no-watcher.
+  [ "$FM_WATCHER_VERDICT_REASON" != stale-beacon ] || fail "unexpected stale-beacon reason"
+  [ "$FM_WATCHER_VERDICT_REASON" != no-watcher ] || fail "unexpected no-watcher reason"
+
+  # Now test with a stale beacon: set the beacon to be old.
+  touch -t 201901010000 "$state/.last-watcher-beat"
+  FM_STATE_OVERRIDE="$state" bash -c '
+    . "$1"
+    fm_watcher_supervision_verdict "$state" "$WATCH" "$FM_GUARD_GRACE" "$home" "$root"
+  ' _ "$LIB"
+
+  # We expect the verdict to be not OK because the beacon is stale.
+  assert_false "$FM_WATCHER_VERDICT_OK" "expected verdict NOT OK when beacon is stale"
+  # The reason should be stale-beacon.
+  [ "$FM_WATCHER_VERDICT_REASON" = stale-beacon ] || fail "expected stale-beacon reason when beacon is stale"
+}
