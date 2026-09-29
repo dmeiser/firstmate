@@ -1,0 +1,31 @@
+ok - fm-guard stale banner: first stale call prints the full actionable banner
+ok - fm-guard stale banner: repair line is quiet-mode-aware, not hardcoded to away mode
+ok - fm-guard stale banner: repeated same-episode calls print a concise reminder only
+ok - fm-guard stale banner: Pi and pi-signed primaries route themselves to the extension model
+ok - fm-guard stale banner: extension-owned hand-off with a live session is healthy
+ok - fm-guard stale banner: extension-owned empty lock is genuinely unheld
+ok - fm-guard stale banner: held unhealthy extension locks stay loud
+ok - fm-guard stale banner: extension model without ownership evidence stays loud
+ok - fm-guard stale banner: every extension-ownership signal is load-bearing
+ok - fm-guard stale banner: extension model still alarms on a genuinely stale beacon
+ok - fm-guard stale banner: queued-wake warning survives the extension hand-off tolerance
+ok - fm-guard: the branch actor is never told to drain queued wakes while main still is
+ok - fm-guard stale banner: the branch actor is never told to repair the watcher and leaves main's episode alone
+ok - fm-guard stale banner: persistent primaries ignore Pi extension evidence
+ok - fm-guard stale banner: extension model stays silent for a live watcher
+ok - fm-guard stale banner: auto-arm fresh beacon without a live watcher is healthy
+ok - fm-guard stale banner: auto-arm stale beacon alarms with the true reason
+ok - fm-guard stale banner: auto-arm stale episode stays one episode across calls
+ok - fm-guard stale banner: auto-arm long handling turn with a healthy rewake stays silent
+ok - fm-guard stale banner: every auto-arm long-turn healthy signal is load-bearing
+ok - fm-guard stale banner: an open auto-arm claim does not explain a stale beacon
+ok - fm-guard stale banner: auto-arm long-turn health does not leak to other models
+ok - fm-guard stale banner: persistent no-watcher banner names the true reason
+ok - fm-guard stale banner: a no-watcher episode survives a beacon mtime change
+not ok - a live identity-matched watcher from another checkout must stay silent, got: ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no live watcher process holds this home lock (last beat: 0s ago).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e /tmp/fm-guard-stale-banner.VQ2Ebm/persistent-foreign-checkout/root/.pi/extensions/fm-primary-turnend-guard.ts -e /tmp/fm-guard-stale-banner.VQ2Ebm/persistent-foreign-checkout/root/.pi/extensions/fm-primary-pi-watch.ts if the extensions are not loaded.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -1,0 +1,59 @@
+Live validation of fm/FM-WATCHER-DOWN-FP-1 (base 00679ae -> target 82d483e)
+Intent: supervision reports the watch cycle down while bin/fm-watch.sh is alive
+and beating, so firstmate raises a false "watcher still down" alarm and the
+cycle is repaired/re-armed for no reason.
+
+Fixture: disposable lab home (bin/fm-lab-home.sh create) + two extra checkouts
+of the same tree (git archive of the target commit = "foreign", git archive of
+the base commit = "pre-fix"), all under mktemp -d in TMPDIR, removed in the
+same turn. Real product driven throughout: bin/fm-watch-arm.sh started the real
+bin/fm-watch.sh from the foreign checkout; bin/fm-guard.sh and
+bin/fm-watch-arm.sh were then run from the main worktree (target code) and from
+the base checkout (pre-fix code) against that one live watcher.
+
+S2 pre-fix false alarm (base guard): FULL "WATCHER DOWN - SUPERVISION IS OFF"
+banner while watcher pid 2332456 alive, beat 3s old -> the reported symptom
+reproduced before the fix.            -> s2-base-guard-false-alarm.txt
+S1 fixed cross-checkout guard: target guard from main worktree printed 0 bytes,
+cleared the false episode marker the pre-fix run had opened; repeated run also
+0 bytes (also under FM_SUPERVISION_MODEL=persistent).
+                                          -> s1-target-guard-silence.txt,
+                                             s1b-target-guard-persistent-model.txt
+S3 cross-checkout re-arm attaches instead of repairing: main-worktree
+fm-watch-arm.sh printed "watcher: attached pid=2332456 (beacon 3s)"; lock pid
+and watcher-path unchanged; original watcher survived killing the attached arm.
+                                          -> s3-target-arm-attach.txt
+S9 pre-fix arm contrast: base arm from another checkout printed
+"watcher: already running pid 2332456" then "watcher: FAILED - cycle ended
+without an actionable reason" (rc=1) against the same healthy watcher ->
+false repair/re-arm trigger before the fix. Target arm in the same state
+attached (rc=124 only from the timeout that kills the blocking attach).
+                                          -> s9-base-arm-crosscheckout.txt,
+                                             s9b-target-arm-crosscheckout.txt
+S5 home pin retained (adversarial): lock fm-home rewritten to another home ->
+guard alarms "no live watcher process holds this home lock"; restoring fm-home
+returns silence.                        -> s5-home-pin-mismatch-alarms.txt, s5b
+S6 script-name pin retained (adversarial): watcher-path basename changed ->
+guard alarms; restoring returns silence. -> s6-basename-mismatch-alarms.txt, s6b
+S7 stalled beat still alarms (adversarial): watcher SIGSTOPped, beacon aged to
+2019 -> full banner "no watcher has a fresh beacon (last beat: ... grace 300s)";
+after SIGCONT the guard is silent again once the beat recovers.
+                                          -> s7-stale-beacon-alive-watcher-alarms.txt,
+                                             s7b-beat-recovered-silent.txt
+S8 cross-checkout stop: pre-fix --stop printed "watcher: none running" while the
+watcher was alive (silent no-op); fixed --stop printed "watcher: stopped
+pid=2332456" and the watcher exited.    -> s8a-base-arm-stop-crosscheckout.txt,
+                                           s8b-target-arm-stop-crosscheckout.txt
+S4 genuine down still alarms cross-checkout (adversarial): with the watcher
+stopped and a fresh beacon, the target guard printed the full banner exactly
+once, then the same-episode reminder.
+                                          -> s4-dead-watcher-crosscheckout-alarms.txt
+
+Regression-test rule: the change's new guard test overlaid on the pre-fix
+checkout fails (rc=1, "not ok - a live identity-matched watcher from another
+checkout must stay silent, got: ...WATCHER DOWN..."); both committed suites pass
+on the target commit (tests/fm-guard-stale-banner.test.sh 36 ok, 0 not ok;
+tests/fm-watcher-lock.test.sh 43 ok, 0 not ok).
+                                          -> regression-new-test-on-prefix-checkout.txt,
+                                             test-fm-guard-stale-banner.txt,
+                                             test-fm-watcher-lock.txt
